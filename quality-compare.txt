@@ -1,0 +1,19 @@
+--- Q4_K_M | A train leaves at 9:40 and the trip take...
+9:40 + 2 hours 35 minutes = **12:15**
+
+--- Q4_K_M | Explain in two sentences why LLM decode ...
+The primary limitation arises because LLMs process text sequentially, and their decoding speed is directly constrained by the total amount of data they can hold in their internal memory. If the available bandwidth is insufficient to fit the entire input sequence into the model's memory, the model must wait for more data to arrive, effectively halting its decoding process until the memory is full.
+
+--- UD-Q2_K_XL | A train leaves at 9:40 and the trip take...
+The train arrives at 9:40.
+
+**Calculation:**
+*   **Departure:** 9:40
+*   **Duration:** 2 hours 35 minutes
+*   **Total:** 9:40 + 2:35 = 9:40 + 2:35 = 9:40 + 2:35 = 9:40 + 2:35 = 9:40 + 2:35 = 9:40 + 2:35 = 9
+
+--- UD-Q2_K_XL | Explain in two sentences why LLM decode ...
+The limitation of LLM decoding is constrained by memory bandwidth because the model's capacity to process vast amounts of data is often limited by the speed of the underlying hardware, which restricts the maximum number of tokens it can handle simultaneously. This bottleneck creates a bottleneck where the model cannot process the entire input stream at the same rate as the input stream, leading to a situation where the model is forced to process only a subset of the input, resulting in a bottleneck.
+
+The limitation of LLM decoding is limited by memory bandwidth because the model's capacity to process vast amounts of data is often limited by the
+

@@ -6,127 +6,133 @@
 >
 > `make verify` sẽ fail nếu còn placeholder chưa điền. Đó là cố ý.
 
-**Họ Tên:** _<Họ Tên>_
-**MSSV:** _<MSSV>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Lê Minh Hiếu
+**MSSV:** 2A202602848
+**Cohort:** A20-K4
+**Ngày submit:** 2026-10-06
 
 ---
 
 ## 1. Hardware & runtime  *(rubric 1, 2 — 10 điểm)*
 
-> Từ `make probe`. Paste output hoặc điền tay.
+- **OS:** Windows 10 IoT Enterprise LTSC 2021 (AMD64)
+- **CPU:** Intel Core i5-8265U @ 1.60 GHz
+- **Cores:** 4 physical / 8 logical
+- **CPU extensions:** AVX2 + FMA (không có AVX-512)
+- **RAM:** 11.9 GB
+- **Accelerator:** NVIDIA GeForce MX130 (2 GB, CUDA) — các lần chạy base dùng `ngl=99` (toàn bộ layer trên GPU)
+- **llama.cpp asset đã tải:** llama-b10488-bin-win-cuda-12.4-x64.zip
+- **Model đã dùng:** Qwen3.5 0.8B (`LAB_MODEL=qwen35-0.8b`)
+- **Quantization:** Q4_K_M + UD-Q2_K_XL (từ `models/active.json`)
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 / Apple Metal / Vulkan / CPU only>_
-- **llama.cpp asset đã tải:** _<vd: llama-b10488-bin-macos-arm64.tar.gz>_
-- **Model đã dùng:** _<Gemma 4 E2B / Qwen3.5 0.8B>_ (`LAB_MODEL=`_<gemma4-e2b / qwen35-0.8b>_)
-- **Quantization:** _<primary>_ + _<compare>_ (từ `models/active.json`)
+**Chạy ở đâu:** laptop của tôi (local, không dùng cloud).
 
-**Chạy ở đâu:** _<laptop của tôi / Colab / Kaggle>_
-_(Nếu dùng cloud fallback: nói rõ vì sao — RAM < 8 GB, setup fail, v.v. Không mất điểm.)_
-
-**Setup story** (≤ 80 chữ): điều gì cần thay đổi để lab chạy trên máy bạn? Có bước
-nào fail rồi phải workaround không?
-
-_Answer here._
+**Setup story:** Lần đầu `pip install` bị treo, chạy lại thì được. Sau đó trình tải Hugging
+Face đứng ở 0 MB (đo bằng curl chỉ ~0.5 MB/s), nên tôi chuyển từ Gemma 4 E2B (5.2 GB) sang
+Qwen3.5 0.8B (0.9 GB), tải hai file GGUF bằng `curl` (`docs/MANUAL-DOWNLOAD.md`) rồi ghi
+manifest bằng `download-model.py --skip-download`. Trên Windows các report sinh ra bị ghi
+bằng cp1252, nên tôi chuyển sang UTF-8 và chạy `verify`/`metrics` với `PYTHONUTF8=1`.
 
 ---
 
 ## 2. Đo lường  *(rubric 3, 4, 5 — 20 điểm)*
 
-> Paste bảng từ `benchmarks/01-quickstart-results.md` (`make bench` tự sinh).
+Từ `benchmarks/01-quickstart-results.md` (`threads=4`, `ngl=99`, `max_tokens=64`, mỗi bản 10 request).
 
 | Quantization | Size (GB) | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode (tok/s) |
 |---|--:|--:|--:|--:|--:|--:|
-| UD-Q4_K_XL | | | | | | |
-| UD-Q2_K_XL | | | | | | |
+| Q4_K_M | 0.50 | 2992 | 722 / 833 | 49.0 / 49.0 | 3806 / 3919 / 3919 | 20.4 |
+| UD-Q2_K_XL | 0.39 | 2990 | 867 / 917 | 60.5 / 60.5 | 4677 / 4725 / 4725 | 16.5 |
 
-**Quan sát** (≤ 60 chữ): 2-bit nhanh hơn bao nhiêu, và **có đáng không**? Bạn đã thử
-hỏi cùng một câu trên cả hai (`make serve` vs `.venv/bin/python labs/02-serve/serve.py --compare`)
-chưa? Chất lượng khác nhau thế nào?
-
-_Answer here._
+**Quan sát:** 2-bit nhỏ hơn 22% nhưng decode **chậm hơn 1.24×** và TTFT cũng chậm hơn →
+không đáng dùng. Decode ở đây không bị chặn bởi bandwidth (~10 GB/s trên một GPU nhỏ), nên
+chi phí dequantization của Q2 lớn hơn phần tiết kiệm được. Hỏi cùng câu cho cả hai: Q4 tính
+đúng giờ tàu (12:15), Q2 trả lời "9:40" rồi lặp vô hạn (`quality-compare.txt`).
 
 ---
 
 ## 3. Serving under load  *(rubric 8, 9, 10 — 20 điểm)*
 
-> Từ `benchmarks/02-server-results.md` (`make load-report`).
+Từ `benchmarks/02-server-results.md` (`--parallel 4`, `ngl=99`).
 
 | Users | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Eff. concurrency | Failures |
 |--:|--:|--:|--:|--:|--:|--:|
-| 10 | | | | | | |
-| 50 | | | | | | |
+| 10 | 0.55 | 15000 | 21000 | 27000 | 8.5 | 0.0% |
+| 50 | 0.49 | 31000 | 56000 | 56000 | 15.6 | 0.0% |
 
-- **Offered load tăng 5×, throughput thực tăng:** _<X.XX>×_
-- **P95 tăng:** _<X.XX>×_
-- **Effective concurrency ở 50 users:** _<số>_ so với `--parallel` = _<số>_ slots
+- **Offered load tăng 5×, throughput thực tăng:** 0.90× (không tăng)
+- **P95 tăng:** 2.67×
+- **Effective concurrency ở 50 users:** 15.6 so với `--parallel` = 4 slots
 
-**Peak `llamacpp:n_busy_slots_per_decode`** (từ `make metrics` khi `make load-50` đang
-chạy): _<số>_ / _<slots>_ slots
+**Peak `llamacpp:n_busy_slots_per_decode`:** 3.96 / 4 slots (`requests_deferred` cao nhất 46; đo trong một lần chạy 50 users lặp lại vì `metrics` bị crash ở lần đầu — xem `02-server-batching-u50.md`)
 
-**Saturation reading** (≤ 80 chữ): server của bạn bão hoà ở đâu, và **bằng chứng nào**
-thuyết phục bạn? Nếu P95 tăng nhanh hơn RPS thì phần latency thêm đó là queue time hay
-compute time — bạn biết bằng cách nào? Nếu bạn phải nâng goodput@SLO, bạn sẽ đổi knob
-nào **trước**, và vì sao knob đó?
-
-_Answer here._
+**Saturation reading:** Server đã bão hoà từ 10 users: effective concurrency 8.5 > 4 slot.
+Ở 50 users, 4 request đang xử lý trong khi 46 request bị deferred, slot bận ~99%, nên phần
+P95 tăng thêm là queue time chứ không phải compute. Với SLO P95 ≤ 25 s, goodput giảm từ
+0.55 xuống dưới 0.25 RPS. Knob tôi đổi đầu tiên là tăng tốc decode (CPU `-t 8`, 1.29× trong
+`make tune`) chứ không phải thêm slot `--parallel`, vì thêm slot chỉ chia nhỏ cùng một
+lượng decode throughput.
 
 ---
 
 ## 4. Integration  *(rubric 12, 13 — 15 điểm)*
 
-> Từ `make pipeline`. Nói thật cái nào real, cái nào stub — stub **không** mất điểm.
-
 | Day | Piece | Real hay stub? |
 |---|---|---|
-| N16 Cloud/IaC | | |
-| N17 Data pipeline | | |
-| N18 Lakehouse | | |
-| N19 Vector + features | | |
+| N16 Cloud/IaC | chạy trên laptop local | stub |
+| N17 Data pipeline | `TOY_DOCS` viết cứng trong `pipeline.py` | stub |
+| N18 Lakehouse | không có | stub |
+| N19 Vector + features | fallback keyword overlap, không có embedding server | stub |
 | N20 Serving | `llama-server` | real |
 
-**Latency split** (mean của 3 query, từ output của `pipeline.py`):
+**Latency split** (trung bình 3 query, `benchmarks/03-integration-results.md`):
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llm: _<ms>_
-- **stage chiếm nhiều nhất:** _<stage>_ (_<%>_ của total)
+- embed: 0.0 ms
+- retrieve: 0.0 ms
+- llm: 7827.3 ms
+- **stage chiếm nhiều nhất:** llm (100% của total)
 
-**Reflection** (≤ 60 chữ): bottleneck ở đâu? Có khớp với kỳ vọng của bạn không? Nếu
-phải giảm latency của pipeline này 2×, bạn sẽ tấn công vào đâu?
-
-_Answer here._
+**Reflection:** LLM chiếm toàn bộ chi phí — đúng kỳ vọng vì retrieval là stub. Bên trong LLM,
+decode chiếm phần lớn (query 1: prefill 872 ms so với decode 5994 ms). Để giảm latency 2×,
+tôi sẽ giới hạn độ dài câu trả lời và dùng decode CPU `-t 8` nhanh hơn; vector search thật
+cũng chỉ thêm vài mili giây.
 
 ---
 
 ## 5. The single change that mattered most  *(rubric 11 — 10 điểm)*
 
-> **Phần quan trọng nhất của report.** Không cần bonus track: `make tune` đã cho bạn
-> một before/after thật (`benchmarks/01-tuning-tg128.md`). Đổi quantization,
-> `LAB_N_CTX`, hay `--parallel` rồi đo lại cũng được.
-
-**Change:** _<vd: hạ -t từ 16 xuống 8; vd: đổi sang UD-Q2_K_XL; vd: --parallel 4 → 8>_
+**Change:** tắt GPU offload, chạy decode trên CPU với số thread đã tune:
+`ngl=99` (MX130) → `LAB_N_GPU_LAYERS=0`, `-t 8`.
 
 ```
-before:  <số + đơn vị>
-after:   <số + đơn vị>
-speedup: <X.Y>×
+before:  20.7 tok/s  (tg128, ngl=99, GPU MX130)      benchmarks/01-tuning-tg128-gpu.md
+after:   26.8 tok/s  (tg128, ngl=0,  CPU -t 8)       benchmarks/01-tuning-tg128.md
+speedup: 1.29x decode
 ```
 
-**Tại sao nó work** (1–2 đoạn — đây là phần grader đọc kỹ nhất):
+Bench end-to-end, Q4_K_M (`01-quickstart-results.md` so với `01-quickstart-cpu-t8.md`):
+TPOT P50 49.0 → 38.8 ms, nhưng TTFT P50 lại **tệ hơn**, 722 → 923 ms; E2E P50 3806 → 3325 ms (1.14×).
 
-_Giải thích như đang nói với bạn ngồi cạnh. Bám vào **cơ chế**, không phải "vibes":
-memory bandwidth? vector width? cache residency? scheduling? queueing? Nếu kết quả
-**khác** với kỳ vọng từ deck — nói rõ, và giải thích vì sao. Grader thưởng điểm cho
-lập luận đúng về một kết quả bất ngờ, hơn là một con số đẹp không được giải thích._
+**Tại sao nó work:**
 
-_Answer here._
+Kỳ vọng từ deck là "GPU nhanh hơn". Trên laptop này điều đó sai với decode, và lý do nằm ở
+thứ đang chặn decode. Ở 20.7 tok/s, GPU đọc 0.5 GB × 20.7 ≈ 10 GB/s weight — thấp hơn nhiều
+so với memory bandwidth của MX130 — nên GPU **không** bị chặn bởi bandwidth. Nó bị chặn vì là
+một GPU entry-level rất nhỏ chạy model 0.8B từng token một: mỗi token là một chuỗi dài các
+kernel nhỏ (nhân ma trận-vector), quá nhỏ để lấp đầy GPU. Overhead launch/đồng bộ mỗi kernel
+cộng với compute yếu của GPU tạo thành trần tốc độ — đó là lý do thread sweep trên GPU phẳng
+hoàn toàn. Trên CPU, cùng phép nhân ma trận-vector đó chạy bằng AVX2 trực tiếp từ RAM và
+cache, không có overhead launch. Đường cong thread (16.0 → 24.3 → 26.1 → 26.8 tok/s với
+1/2/4/8 thread, rơi xuống 20.0 ở 16 thread) cho thấy khi 2–4 core đã làm memory bus bận thì
+thêm core lợi rất ít; vượt quá 8 CPU logic thì oversubscription khiến mỗi barrier của ggml
+phải chờ thread bị OS tạm dừng.
+
+Prefill đi theo chiều ngược lại, và kết quả TTFT xác nhận cơ chế này. Prefill xử lý toàn bộ
+token của prompt cùng lúc dưới dạng nhân ma trận-ma trận — compute-bound và đủ lớn để GPU bận
+— nên GPU vẫn thắng TTFT (722 so với 923 ms). Với prompt ngắn và câu trả lời 64 token của lab
+này, decode chiếm phần lớn thời gian nên CPU thắng end-to-end; với prompt RAG dài, nhiều khả
+năng GPU sẽ thắng lại. Lưu ý: phần serving và load test (§3) chạy với cấu hình GPU mặc định,
+trước khi tôi có kết quả này.
 
 ---
 
@@ -185,4 +191,6 @@ xem được → 0 điểm.
 
 ## 9. Khai báo sử dụng AI  *(xem `docs/RULES.md` §3)*
 
-_(Công cụ nào, dùng vào việc gì. Ghi "Không dùng" nếu không dùng.)_
+Claude Code (Anthropic): chạy các lệnh của lab, debug lỗi pip / tải Hugging Face bị treo và lỗi
+encoding trên Windows, soạn nháp các phần nhận xét và §2–§5 dựa trên số liệu do chính máy tôi
+sinh ra. Mọi số liệu đều từ script chạy trên laptop này; không sửa tay con số nào.
